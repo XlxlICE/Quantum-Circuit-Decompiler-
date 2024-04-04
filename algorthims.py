@@ -19,6 +19,31 @@ from qiskit import AncillaRegister,ClassicalRegister, QuantumCircuit, QuantumReg
 from qiskit.circuit.library import QFT
 from qiskit.algorithms import Grover
 from qiskit.circuit.library import GroverOperator
+from math import pi
+
+def h_c(n) -> QuantumCircuit:
+    
+    qc = QuantumCircuit(n)
+    for i in range(n):
+        qc.h(i)
+    return qc
+
+def rx_c(n):
+    qc = QuantumCircuit(n)
+    angle = pi
+    for i in range(n):
+        qc.rx(angle, i)
+        angle /= 2
+    return qc
+
+def rx_gradually_c(n):
+    qc = QuantumCircuit(n)
+    angle = pi
+    for level in range(1, n + 1):
+        current_angle = angle / (2 ** (level - 1))
+        for i in range(level):
+            qc.rx(current_angle, i)
+    return qc
 
 def qpe(num_qubits: int) -> QuantumCircuit:
     """Returns a quantum circuit implementing the Quantum Phase Estimation algorithm for a phase which can be
