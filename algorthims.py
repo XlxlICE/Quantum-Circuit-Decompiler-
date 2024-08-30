@@ -36,7 +36,34 @@ def h_0(n):
         qc.h(0)
     return qc
 
+def ry_c(n):
+    qc = QuantumCircuit(n)
+    angle = pi
+    for i in range(n):
+        qc.ry(angle, i)
+        angle /= 2
+    return qc
 
+def ry_decomposed(n):
+    qc = QuantumCircuit(n)
+    angle = pi
+    for i in range(n):
+        qc.h(i)  # Apply H gate
+        qc.rx(angle, i)  # Apply RX gate
+        qc.h(i)  # Apply H gate
+        angle /= 2
+    return qc
+
+
+def ry_decomposed_rx_rz(n):
+    qc = QuantumCircuit(n)
+    angle = pi
+    for i in range(n):
+        qc.rz(-pi/2, i)  # Apply RZ gate
+        qc.rx(angle, i)  # Apply RX gate
+        qc.rz(pi/2, i)  # Apply RZ gate
+        angle /= 2
+    return qc
 
 def rx_c(n):
     qc = QuantumCircuit(n)
@@ -115,6 +142,58 @@ def qft(num_qubits: int) -> QuantumCircuit:
 
     return qc
 
+def qft_dec(num_qubits: int) -> QuantumCircuit:
+    qc = QuantumCircuit(num_qubits)
+    for i in range(num_qubits):
+    # Apply the Hadamard gate to the i-th qubit
+        qc.h(i)
+    # Apply controlled phase rotation gates
+    for i2 in range(num_qubits - i - 1):  # i2 is now the relative index from i+1
+        # Compute the actual index of the qubit to interact with
+        target_qubit = i + i2 + 1
+        angle = np.pi / (2 ** (i2 + 1))  # Adjusted to reflect the relative position
+        qc.cp(angle, target_qubit, i)
+    
+def qft_decom(num_qubits: int) -> QuantumCircuit:
+    """Returns a quantum circuit implementing the decomposed Quantum Fourier Transform.
+
+    Keyword arguments:
+    num_qubits -- number of qubits of the returned quantum circuit
+    """
+    qc = QuantumCircuit(num_qubits, name="Decomposed QFT")
+
+    # Apply the Hadamard and controlled phase gates
+    for j in range(num_qubits):
+        # Apply the Hadamard gate to the j-th qubit
+        qc.h(j)
+        # Apply controlled phase rotation gates
+        for k in range(j+1, num_qubits):
+            angle = np.pi / (2 ** (k - j))
+            qc.cp(angle, k, j)
+
+    # Swap qubits to reverse the order of outputs
+    for j in range(num_qubits // 2):
+        qc.swap(j, num_qubits-j-1)
+
+    return qc
+
+def qpe_dec(num_qubits: int) -> QuantumCircuit:
+    qc = QuantumCircuit(num_qubits + 1)
+    
+    # Apply Hadamard gates to the first 'num_qubits' qubits
+    for i in range(num_qubits):
+        qc.h(i)
+    
+    # Apply controlled unitary operations
+    for i in range(num_qubits):
+        for j in range(2**i):
+            qc.cp(np.pi / 2**i, num_qubits - 1 - i, num_qubits)
+    
+    # Apply inverse QFT to the first 'num_qubits' qubits
+    qc.append(qft_dec(num_qubits).inverse(), range(num_qubits))
+    
+    return qc
+
 def grover(num_qubits: int, ancillary_mode: str = "noancilla") -> QuantumCircuit:
     """Returns a quantum circuit implementing Grover's algorithm.
 
@@ -150,47 +229,35 @@ def grover(num_qubits: int, ancillary_mode: str = "noancilla") -> QuantumCircuit
 
     return qc
 
-class Adder(QuantumCircuit):
-    r"""Compute the sum of two equally sized qubit registers.
 
-    For two registers :math:`|a\rangle_n` and :math:|b\rangle_n` with :math:`n` qubits each, an
-    adder performs the following operation
+def ghz_state(n: int) -> QuantumCircuit:
+    qc = QuantumCircuit(n)
+    qc.h(0)
+    for i in range(n - 1):
+        qc.cx(i, i + 1)
+    return qc
 
-    .. math::
-
-        |a\rangle_n |b\rangle_n \mapsto |a\rangle_n |a + b\rangle_{n + 1}.
-
-    The quantum register :math:`|a\rangle_n` (and analogously :math:`|b\rangle_n`)
-
-    .. math::
-
-        |a\rangle_n = |a_0\rangle \otimes \cdots \otimes |a_{n - 1}\rangle,
-
-    for :math:`a_i \in \{0, 1\}`, is associated with the integer value
-
-    .. math::
-
-        a = 2^{0}a_{0} + 2^{1}a_{1} + \cdots + 2^{n - 1}a_{n - 1}.
-
-    """
-
-    def __init__(self, num_state_qubits: int, name: str = "Adder") -> None:
-        """
-        Args:
-            num_state_qubits: The number of qubits in each of the registers.
-            name: The name of the circuit.
-        """
-        super().__init__(name=name)
-        self._num_state_qubits = num_state_qubits
-
-    @property
-    def num_state_qubits(self) -> int:
-        """The number of state qubits, i.e. the number of bits in each input register.
-
-        Returns:
-            The number of state qubits.
-        """
-        return self._num_state_qubits
+def qpe_dec(num_qubits: int) -> QuantumCircuit:
+    qc = QuantumCircuit(num_qubits + 1)
     
+    # Apply Hadamard gates to the first 'num_qubits' qubits
+    for i in range(num_qubits):
+        qc.h(i)
+    
+    # Apply controlled unitary operations
+    for i in range(num_qubits):
+        for j in range(2**i):
+            qc.cp(np.pi / 2**i, num_qubits - 1 - i, num_qubits)
+    
+    # Apply inverse QFT to the first 'num_qubits' qubits
+    for i in range(num_qubits // 2):
+        qc.swap(i, num_qubits - i - 1)
+    
+    for i in range(num_qubits):
+        qc.h(i)
+        for j in range(i):
+            qc.cp(np.pi / 2**(i-j), j, i)
+    
+    return qc
 
 
